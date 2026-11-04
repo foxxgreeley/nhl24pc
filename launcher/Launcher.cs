@@ -64,6 +64,7 @@ namespace NhlPort
             { "ups_dlss", new[] { "DLSS (RTX)", "DLSS (RTX)" } },
             { "sharpness", new[] { "Zaostrenie", "Sharpness" } },
             { "vsync", new[] { "VSync", "VSync" } },
+            { "vblank_lbl", new[] { "Obnovovacia frekvencia (vblank)", "Refresh rate (vblank)" } },
             { "vsync_desc", new[] { "Synchronizácia s obnovovacou frekvenciou (bez trhania, mierne vyššia odozva).", "Synchronises with the refresh rate (no tearing, slightly more input lag)." } },
             { "redzone", new[] { "Ochrana red zone (Windows)", "Red zone protection (Windows)" } },
             { "redzone_desc", new[] { "Experimentálna oprava pádu pri načítaní zápasu (chyba 0xc0000005 hneď po výbere tímov). Zapni, ak ti hra takto padá; môže mierne znížiť výkon. Platí od ďalšieho spustenia.",
@@ -496,6 +497,7 @@ namespace NhlPort
         GlassSlider sharpBar;
         TransparentLabel sharpValue, pkgReqLabel, summaryLabel, versionLabel, gameVersionLabel, statusLabel;
         CheckBox vsyncQuick;
+        ComboBox vblankQuick;
         CheckBox redzoneQuick;
         ImageButton playButton;
         FlatButton simpleBtn, advancedBtn;
@@ -525,6 +527,7 @@ namespace NhlPort
         bool syncingUpscaler; // nhlport: suppresses syncFsr while the dropdown drives the FSR checkboxes
         static readonly int[] DlssPresetValues = { 0, 9, 10 };
         static readonly int[] RenderResValues = { 0, 1080, 1440, 2160 };
+        static readonly int[] VblankValues = { 60, 90, 120, 144 };
         Label sharpnessLabel;
 
         readonly bool startAdvanced;
@@ -946,7 +949,7 @@ namespace NhlPort
             Gpu["fsr_enabled"] = upscalerBox.SelectedIndex == 1 || upscalerBox.SelectedIndex == 2;
             Gpu["rcas_enabled"] = rcasBox.Checked;
             Gpu["rcas_attenuation"] = sharpnessBar.Value;
-            Gpu["vblank_frequency"] = 60;
+            Gpu["vblank_frequency"] = VblankValues[Math.Max(0, Math.Min(VblankValues.Length - 1, vblankQuick.SelectedIndex))];
             Launcher["language"] = Loc.Lang;
             // Windows static guest red-zone protection of the emulator (src/core/cpu_patches.cpp): fixes the
             // crash while a match loads when a page-protection fault clobbers the red zone of a leaf function.
@@ -1057,7 +1060,7 @@ namespace NhlPort
             readyPanel.Controls.Add(new TransparentLabel { Left = 28, Top = 380, Width = 390, Height = 60, Font = Theme.Small, ForeColor = Color.FromArgb(200, 210, 225), Text = Loc.T("hint") });
 
             // ---- quick settings
-            quickPanel = new GlassPanel { Left = 490, Top = 0, Width = 660, Height = 515 };
+            quickPanel = new GlassPanel { Left = 490, Top = 0, Width = 660, Height = 640 };
             simpleView.Controls.Add(quickPanel);
             quickPanel.Controls.Add(new SectionTitle { Left = 16, Top = 18, Width = 600, Text = Loc.T("quick") });
 
@@ -1144,6 +1147,19 @@ namespace NhlPort
             quickPanel.Controls.Add(redzoneQuick);
             quickPanel.Controls.Add(new TransparentLabel { Left = c1, Top = y + 26, Width = 600, Height = 44, Font = Theme.Small, ForeColor = Color.FromArgb(200, 210, 225), Text = Loc.T("redzone_desc") });
             redzoneQuick.CheckedChanged += delegate { RefreshSummary(); };
+            y += 74;
+            // nhlport: emulated vblank rate - the metronome the game paces its loop on.
+            // 120 lets delta-time-paced modes run up to ~120 fps; game logic verified
+            // real-time based (menu flips 2 vblanks, gameplay tracks the clock).
+            quickPanel.Controls.Add(new TransparentLabel { Left = c1, Top = y, Width = cw, Height = 20, Font = Theme.Label, Text = Loc.T("vblank_lbl") });
+            y += 22;
+            vblankQuick = new ComboBox { Left = c1, Top = y, Width = c2 + cw - c1, DropDownStyle = ComboBoxStyle.DropDownList };
+            Theme.Style(vblankQuick);
+            vblankQuick.Items.AddRange(new object[] { "60 Hz", "90 Hz", "120 Hz", "144 Hz" });
+            var vbl = Convert.ToInt32(GpuValue("vblank_frequency", 60));
+            vblankQuick.SelectedIndex = vbl == 144 ? 3 : (vbl == 120 ? 2 : (vbl == 90 ? 1 : 0));
+            vblankQuick.SelectedIndexChanged += delegate { RefreshSummary(); };
+            quickPanel.Controls.Add(vblankQuick);
 
             // the quick controls mirror the advanced ones
             outputBox.TextChanged += delegate { resolutionBox.Text = outputBox.Text; RefreshSummary(); };
@@ -1341,6 +1357,8 @@ namespace NhlPort
             parts.Add(displayModeBox.SelectedIndex >= 0 ? (string)displayModeBox.Items[displayModeBox.SelectedIndex] : "");
             parts.Add(upscalerBox.SelectedIndex >= 0 ? (string)upscalerBox.Items[upscalerBox.SelectedIndex] : "");
             parts.Add(Loc.T("vsync") + (vsyncQuick.Checked ? " ✓" : " ✗"));
+            if (vblankQuick != null && vblankQuick.SelectedIndex >= 0)
+                parts.Add(Loc.T("vblank_lbl") + ": " + (string)vblankQuick.Items[vblankQuick.SelectedIndex]);
             if (redzoneQuick != null && redzoneQuick.Checked) parts.Add(Loc.T("redzone_short"));
             summaryLabel.Text = string.Join("   •   ", parts.ToArray()).ToUpperInvariant();
         }
