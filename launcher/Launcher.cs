@@ -1060,7 +1060,7 @@ namespace NhlPort
             readyPanel.Controls.Add(new TransparentLabel { Left = 28, Top = 380, Width = 390, Height = 60, Font = Theme.Small, ForeColor = Color.FromArgb(200, 210, 225), Text = Loc.T("hint") });
 
             // ---- quick settings
-            quickPanel = new GlassPanel { Left = 490, Top = 0, Width = 660, Height = 640 };
+            quickPanel = new GlassPanel { Left = 490, Top = 0, Width = 660, Height = 515 };
             simpleView.Controls.Add(quickPanel);
             quickPanel.Controls.Add(new SectionTitle { Left = 16, Top = 18, Width = 600, Text = Loc.T("quick") });
 
@@ -1103,14 +1103,23 @@ namespace NhlPort
             // nhlport: game render resolution (the game hardcodes 1080p; the override
             // patches its resolution table and reports the same size)
             quickPanel.Controls.Add(new TransparentLabel { Left = c1, Top = y, Width = cw, Height = 20, Font = Theme.Label, Text = Loc.T("render_res_lbl") });
+            quickPanel.Controls.Add(new TransparentLabel { Left = c2, Top = y, Width = cw, Height = 20, Font = Theme.Label, Text = Loc.T("vblank_lbl") });
             y += 22;
-            renderResQuick = new ComboBox { Left = c1, Top = y, Width = c2 + cw - c1, DropDownStyle = ComboBoxStyle.DropDownList };
+            renderResQuick = new ComboBox { Left = c1, Top = y, Width = cw, DropDownStyle = ComboBoxStyle.DropDownList };
             Theme.Style(renderResQuick);
             renderResQuick.Items.AddRange(new object[] { "Default (1080p)", "1080p", "1440p", "4K" });
             var rrq = Convert.ToInt32(GpuValue("render_resolution", 0));
             renderResQuick.SelectedIndex = rrq == 2160 ? 3 : (rrq == 1440 ? 2 : (rrq == 1080 ? 1 : 0));
             renderResQuick.SelectedIndexChanged += delegate { RefreshSummary(); };
             quickPanel.Controls.Add(renderResQuick);
+            // nhlport: emulated vblank rate - the metronome the game paces its loop on
+            vblankQuick = new ComboBox { Left = c2, Top = y, Width = cw, DropDownStyle = ComboBoxStyle.DropDownList };
+            Theme.Style(vblankQuick);
+            vblankQuick.Items.AddRange(new object[] { "60 Hz", "90 Hz", "120 Hz", "144 Hz" });
+            var vbl = Convert.ToInt32(GpuValue("vblank_frequency", 60));
+            vblankQuick.SelectedIndex = vbl == 144 ? 3 : (vbl == 120 ? 2 : (vbl == 90 ? 1 : 0));
+            vblankQuick.SelectedIndexChanged += delegate { RefreshSummary(); };
+            quickPanel.Controls.Add(vblankQuick);
             y += 44;
             quickPanel.Controls.Add(new TransparentLabel { Left = c1, Top = y, Width = cw, Height = 20, Font = Theme.Label, Text = Loc.T("upscaler") });
             quickPanel.Controls.Add(new TransparentLabel { Left = c2, Top = y, Width = cw, Height = 20, Font = Theme.Label, Text = Loc.T("sharpness") });
@@ -1147,19 +1156,6 @@ namespace NhlPort
             quickPanel.Controls.Add(redzoneQuick);
             quickPanel.Controls.Add(new TransparentLabel { Left = c1, Top = y + 26, Width = 600, Height = 44, Font = Theme.Small, ForeColor = Color.FromArgb(200, 210, 225), Text = Loc.T("redzone_desc") });
             redzoneQuick.CheckedChanged += delegate { RefreshSummary(); };
-            y += 74;
-            // nhlport: emulated vblank rate - the metronome the game paces its loop on.
-            // 120 lets delta-time-paced modes run up to ~120 fps; game logic verified
-            // real-time based (menu flips 2 vblanks, gameplay tracks the clock).
-            quickPanel.Controls.Add(new TransparentLabel { Left = c1, Top = y, Width = cw, Height = 20, Font = Theme.Label, Text = Loc.T("vblank_lbl") });
-            y += 22;
-            vblankQuick = new ComboBox { Left = c1, Top = y, Width = c2 + cw - c1, DropDownStyle = ComboBoxStyle.DropDownList };
-            Theme.Style(vblankQuick);
-            vblankQuick.Items.AddRange(new object[] { "60 Hz", "90 Hz", "120 Hz", "144 Hz" });
-            var vbl = Convert.ToInt32(GpuValue("vblank_frequency", 60));
-            vblankQuick.SelectedIndex = vbl == 144 ? 3 : (vbl == 120 ? 2 : (vbl == 90 ? 1 : 0));
-            vblankQuick.SelectedIndexChanged += delegate { RefreshSummary(); };
-            quickPanel.Controls.Add(vblankQuick);
 
             // the quick controls mirror the advanced ones
             outputBox.TextChanged += delegate { resolutionBox.Text = outputBox.Text; RefreshSummary(); };
